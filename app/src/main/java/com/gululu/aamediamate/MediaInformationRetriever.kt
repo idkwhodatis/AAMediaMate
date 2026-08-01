@@ -18,9 +18,15 @@ object MediaInformationRetriever {
     private val iconMap = mutableMapOf<String, Bitmap?>()
     internal val labelMap = mutableMapOf<String, String>()
 
-    fun refreshCurrentMediaInfo(context: Context): MediaInfo? {
+    fun refreshCurrentMediaInfo(
+        context: Context,
+        preferredPackageName: String? = null
+    ): MediaInfo? {
         try {
-            val controller = MediaControllerManager.getFirstController(context) ?: return null
+            val controller = MediaControllerManager.getFirstController(
+                context,
+                preferredPackageName
+            ) ?: return null
             if (controller.packageName == context.packageName) return null
 
             val metadata = controller.metadata ?: return null

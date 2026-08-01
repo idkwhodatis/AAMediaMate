@@ -19,20 +19,32 @@ object MediaControllerManager {
         }
     }
 
-    fun getFirstController(context: Context): MediaController? {
-        val controllers = getAllControllers(context)
-        
-        // Prioritize the controller that is currently playing
-        val playingController = controllers.firstOrNull { 
-            it.playbackState?.state == PlaybackState.STATE_PLAYING ||
-            it.playbackState?.state == PlaybackState.STATE_BUFFERING
+    fun getFirstController(context: Context, preferredPackageName: String? = null): MediaController? =
+        selectController(getAllControllers(context), preferredPackageName)
+
+    internal fun selectController(
+        controllers: List<MediaController>,
+        preferredPackageName: String?
+    ): MediaController? {
+        val preferredController = preferredPackageName?.let { packageName ->
+            controllers.firstOrNull { it.packageName == packageName }
         }
-        
-        return playingController ?: controllers.firstOrNull()
+
+        if (preferredController?.isPlayingOrBuffering() == true) {
+            return preferredController
+        }
+
+        return controllers.firstOrNull { it.isPlayingOrBuffering() }
+            ?: preferredController
+            ?: controllers.firstOrNull()
     }
 
     fun getActiveController(context: Context): MediaController? {
         val target = MediaBridgeSessionManager.getCurrentMediaPackage() ?: return null
         return getAllControllers(context).firstOrNull { it.packageName == target }
     }
+
+    private fun MediaController.isPlayingOrBuffering(): Boolean =
+        playbackState?.state == PlaybackState.STATE_PLAYING ||
+                playbackState?.state == PlaybackState.STATE_BUFFERING
 }
