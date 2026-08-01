@@ -66,6 +66,8 @@
     <string name="combine_app_icon_and_album_art_subtitle">Show app icon on album art</string>
     <string name="show_album_name_title">Show Album Name</string>
     <string name="show_album_name_subtitle">Show album name in artist line</string>
+    <string name="show_source_app_title">Show Source App</string>
+    <string name="show_source_app_subtitle">Show “From [app]” on the car display</string>
 
     <!-- Main Screen -->
     <string name="app_title">AA Media Mate</string>
