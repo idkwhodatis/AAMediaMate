@@ -145,7 +145,10 @@ class MediaBridgeMediaCallback(private val context: Context) : MediaSessionCompa
     private fun sync()
     {
         Handler(Looper.getMainLooper()).postDelayed({
-            MediaBridgeSessionManager.updateFromMediaInfo(MediaInformationRetriever.refreshCurrentMediaInfo(context))
+            MediaBridgeSessionManager.updateFromMediaInfo(
+                MediaInformationRetriever.refreshCurrentMediaInfo(context),
+                forceLyricsResync = true
+            )
         }, 500)
     }
 }

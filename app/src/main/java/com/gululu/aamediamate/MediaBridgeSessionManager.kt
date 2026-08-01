@@ -34,7 +34,7 @@ object MediaBridgeSessionManager {
         Log.d("MediaBridge", "✅ MediaSession initialized.")
     }
 
-    fun updateFromMediaInfo(info: MediaInfo?) {
+    fun updateFromMediaInfo(info: MediaInfo?, forceLyricsResync: Boolean = false) {
         currentMediaInfo = info
         val session = mediaSession ?: return
         val ctx = context ?: return
@@ -53,9 +53,9 @@ object MediaBridgeSessionManager {
         // Track this app as bridged
         SettingsManager.addOrUpdateBridgedApp(ctx, info.appPackageName, info.appName)
 
-        // Restore original metadata before showing lyrics
+        // Metadata is only republished when its visible content changes; playback state always refreshes.
         mediaStateUpdater?.update(session, info)
-        lyricDisplayManager?.start(session, info)
+        lyricDisplayManager?.start(session, info, forceRestart = forceLyricsResync)
 
         mediaInfoListener?.invoke(info)
         MediaBridgeService.refreshBrowserData()
