@@ -13,6 +13,9 @@ import android.util.Log
 import android.view.KeyEvent
 
 class MediaBridgeMediaCallback(private val context: Context) : MediaSessionCompat.Callback() {
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var syncGeneration = 0
+
     override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
         val keyEvent = mediaButtonEvent?.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
 
@@ -142,10 +145,29 @@ class MediaBridgeMediaCallback(private val context: Context) : MediaSessionCompa
         return SettingsManager.isAppSwapRewindFastForward(context, controller.packageName)
     }
 
-    private fun sync()
-    {
-        Handler(Looper.getMainLooper()).postDelayed({
-            MediaBridgeSessionManager.updateFromMediaInfo(MediaInformationRetriever.refreshCurrentMediaInfo(context))
-        }, 500)
+    private fun sync() {
+        val generation = ++syncGeneration
+        val preferredPackageName = MediaBridgeSessionManager.getCurrentMediaPackage()
+
+        SYNC_DELAYS_MS.forEachIndexed { index, delayMs ->
+            mainHandler.postDelayed({
+                if (generation == syncGeneration) {
+                    val info = MediaInformationRetriever.refreshCurrentMediaInfo(
+                        context,
+                        preferredPackageName
+                    )
+                    if (info != null || index == SYNC_DELAYS_MS.lastIndex) {
+                        MediaBridgeSessionManager.updateFromMediaInfo(
+                            info,
+                            forceLyricsResync = index == SYNC_DELAYS_MS.lastIndex
+                        )
+                    }
+                }
+            }, delayMs)
+        }
+    }
+
+    companion object {
+        private val SYNC_DELAYS_MS = longArrayOf(0L, 150L, 500L)
     }
 }

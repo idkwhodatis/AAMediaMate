@@ -1,6 +1,7 @@
 package com.gululu.aamediamate
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -9,18 +10,21 @@ import com.gululu.aamediamate.models.MediaInfo
 
 class MediaStateUpdater(private val context: Context) {
 
+    private var lastMetadataSnapshot: MetadataSnapshot? = null
+
     fun update(mediaSession: MediaSessionCompat, info: MediaInfo) {
-        updateMetadata(mediaSession, info)
+        val snapshot = createMetadataSnapshot(info)
+        if (lastMetadataSnapshot?.hasSameContent(snapshot) != true) {
+            updateMetadata(mediaSession, snapshot)
+            lastMetadataSnapshot = snapshot
+        }
         updatePlaybackState(mediaSession, info)
-        Log.d("MediaBridge", "🎵 Updated MediaSession: ${info.title} by ${info.artist}")
+        Log.d("MediaBridge", "🎵 Updated MediaSession state: ${info.title} by ${info.artist}")
     }
 
-    private fun updateMetadata(mediaSession: MediaSessionCompat, info: MediaInfo) {
-        val swapEnabled = SettingsManager.isAppSwapRewindFastForward(context, info.appPackageName)
-
+    private fun createMetadataSnapshot(info: MediaInfo): MetadataSnapshot {
         val artist = info.artist.takeIf { it.isNotBlank() }
         val album = info.album.takeIf { it.isNotBlank() }
-
         val showAlbumName = SettingsManager.getShowAlbumName(context)
         val artistText = if (showAlbumName) {
             listOfNotNull(artist, album).joinToString(" - ")
@@ -28,19 +32,41 @@ class MediaStateUpdater(private val context: Context) {
             artist ?: ""
         }
 
+        val sourceAppText = if (SettingsManager.getShowSourceApp(context)) {
+            "From ${info.appName}"
+        } else {
+            null
+        }
+
+        return MetadataSnapshot(
+            mediaId = info.mediaId,
+            title = info.title,
+            artist = artistText,
+            sourceApp = sourceAppText,
+            duration = info.duration,
+            isPlaying = info.isPlaying,
+            albumArt = info.albumArt,
+            albumArtGenerationId = info.albumArt?.let { artwork ->
+                runCatching { artwork.generationId }.getOrNull()
+            }
+        )
+    }
+
+    private fun updateMetadata(mediaSession: MediaSessionCompat, snapshot: MetadataSnapshot) {
         val metadataBuilder = MediaMetadataCompat.Builder()
-            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, info.title)
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, info.duration)
+            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, snapshot.mediaId)
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, snapshot.title)
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, snapshot.duration)
 
-        if (artistText.isNotBlank()) {
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artistText)
+        if (snapshot.artist.isNotBlank()) {
+            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, snapshot.artist)
         }
 
-        if (SettingsManager.getShowSourceApp(context)) {
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "From ${info.appName}")
+        snapshot.sourceApp?.let {
+            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, it)
         }
 
-        info.albumArt?.let {
+        snapshot.albumArt?.let {
             metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
         }
 
@@ -77,6 +103,7 @@ class MediaStateUpdater(private val context: Context) {
     }
 
     fun clear(mediaSession: MediaSessionCompat) {
+        lastMetadataSnapshot = null
         mediaSession.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setState(PlaybackStateCompat.STATE_NONE, 0, 1.0f)
@@ -84,6 +111,30 @@ class MediaStateUpdater(private val context: Context) {
         )
         mediaSession.setMetadata(null)
         Log.d("MediaBridge", "Reset session states.")
+    }
+
+    private data class MetadataSnapshot(
+        val mediaId: String,
+        val title: String,
+        val artist: String,
+        val sourceApp: String?,
+        val duration: Long,
+        val isPlaying: Boolean,
+        val albumArt: Bitmap?,
+        val albumArtGenerationId: Int?
+    ) {
+        fun hasSameContent(other: MetadataSnapshot): Boolean =
+            mediaId == other.mediaId &&
+                    title == other.title &&
+                    artist == other.artist &&
+                    sourceApp == other.sourceApp &&
+                    duration == other.duration &&
+                    isPlaying == other.isPlaying &&
+                    albumArt.hasSamePixels(
+                        other = other.albumArt,
+                        generationId = albumArtGenerationId,
+                        otherGenerationId = other.albumArtGenerationId
+                    )
     }
 
     private fun createRewindAction(): PlaybackStateCompat.CustomAction {
@@ -140,4 +191,15 @@ class MediaStateUpdater(private val context: Context) {
                     PlaybackStateCompat.ACTION_REWIND or
                     PlaybackStateCompat.ACTION_FAST_FORWARD
     }
+}
+
+private fun Bitmap?.hasSamePixels(
+    other: Bitmap?,
+    generationId: Int?,
+    otherGenerationId: Int?
+): Boolean {
+    if (this === other) return generationId == otherGenerationId
+    if (this == null || other == null) return false
+    if (width != other.width || height != other.height || config != other.config) return false
+    return runCatching { sameAs(other) }.getOrDefault(false)
 }

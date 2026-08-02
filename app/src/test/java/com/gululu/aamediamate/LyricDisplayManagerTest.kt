@@ -69,6 +69,7 @@ class LyricDisplayManagerTest {
         
         // Verify Album is always "From [App Name]"
         assertEquals("From MusicApp", metadata.getString(MediaMetadataCompat.METADATA_KEY_ALBUM))
+        assertEquals(mediaInfo.mediaId, metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
         
         // Verify Title is the lyric line
         assertEquals("Singing lyrics...", metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE))

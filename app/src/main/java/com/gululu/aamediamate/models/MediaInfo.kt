@@ -13,4 +13,11 @@ data class MediaInfo(
     val isPlaying: Boolean,
     val albumArt: Bitmap?,
     val appIcon: Bitmap?
-)
+) {
+    internal val mediaId: String
+        get() = listOf(appPackageName, title, artist, album, duration.toString())
+            .joinToString(separator = "") { value -> "${value.length}:$value" }
+
+    internal fun isSameTrack(other: MediaInfo?): Boolean =
+        other != null && mediaId == other.mediaId
+}

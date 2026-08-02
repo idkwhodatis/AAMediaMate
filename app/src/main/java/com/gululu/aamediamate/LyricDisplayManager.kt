@@ -28,7 +28,7 @@ class LyricDisplayManager(private val context: Context) {
             .apply { setReferenceCounted(false) }
     }
 
-    fun start(mediaSession: MediaSessionCompat, info: MediaInfo) {
+    fun start(mediaSession: MediaSessionCompat, info: MediaInfo, forceRestart: Boolean = false) {
         val globalLyricsEnabled = SettingsManager.getLyricsEnabled(context)
         val appLyricsEnabled = SettingsManager.isAppLyricsEnabled(context, info.appPackageName)
         
@@ -39,6 +39,12 @@ class LyricDisplayManager(private val context: Context) {
                 Log.d("MediaBridge", "🚫 Lyrics disabled for app: ${info.appPackageName}")
             }
             stop()
+            return
+        }
+
+        if (!forceRestart && info.isSameTrack(currentMediaInfo)) {
+            currentMediaInfo = info
+            Log.d("MediaBridge", "🎵 Keeping active lyrics for unchanged track: ${info.title}")
             return
         }
         
@@ -56,7 +62,7 @@ class LyricDisplayManager(private val context: Context) {
                     Log.d("MediaBridge", "🎤 Lyrics for current song updated. Restarting lyric display.")
                     // Stop internal components and restart to refresh with new lyrics
                     stopInternal()
-                    start(mediaSession, observedMediaInfo)
+                    start(mediaSession, observedMediaInfo, forceRestart = true)
                 }
             }
         }
@@ -108,6 +114,7 @@ class LyricDisplayManager(private val context: Context) {
 
     private fun updateLyricLine(mediaSession: MediaSessionCompat, originalInfo: MediaInfo, lyricLine: String) {
         val metadataBuilder = MediaMetadataCompat.Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, originalInfo.mediaId)
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, originalInfo.duration)
 
         if (SettingsManager.getShowSourceApp(context)) {
