@@ -32,7 +32,7 @@ class BillingManager(private val context: Context, private val scope: CoroutineS
 
     private var billingClient: BillingClient = BillingClient.newBuilder(context)
         .setListener(purchasesUpdatedListener)
-        .enablePendingPurchases()
+        .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .build()
 
     private val _billingState = MutableStateFlow<BillingUiState>(BillingUiState.Loading)

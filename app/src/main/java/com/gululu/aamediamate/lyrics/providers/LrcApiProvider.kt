@@ -36,11 +36,11 @@ object LrcApiProvider : LyricsProvider {
             val response = client.newCall(request).execute()
             Log.d("MediaBridge", "Response: $response")
 
-            if (response.code() != 200) {
+            if (response.code != 200) {
                 return@withContext null
             }
 
-            val body = response.body()?.string()
+            val body = response.body?.string()
 
             body?.takeIf { it.isNotBlank() }
         } catch (e: Exception) {
