@@ -65,6 +65,17 @@ object MediaBridgeSessionManager {
 
     fun getCurrentMediaPackage(): String? = currentMediaInfo?.appPackageName
 
+    /** Rebuilds the active bridged session after a display preference changes. */
+    fun refreshCurrentSession(forceLyricsResync: Boolean = false) {
+        val ctx = context ?: return
+        val refreshedInfo = MediaInformationRetriever.refreshCurrentMediaInfo(
+            ctx,
+            currentMediaInfo?.appPackageName
+        ) ?: currentMediaInfo ?: return
+
+        updateFromMediaInfo(refreshedInfo, forceLyricsResync)
+    }
+
     fun setMediaInfoListener(listener: (MediaInfo?) -> Unit) {
         mediaInfoListener = listener
     }
