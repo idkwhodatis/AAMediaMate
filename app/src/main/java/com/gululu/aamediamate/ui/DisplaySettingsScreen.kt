@@ -2,6 +2,8 @@ package com.gululu.aamediamate.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -11,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.gululu.aamediamate.MediaBridgeSessionManager
 import com.gululu.aamediamate.R
 import com.gululu.aamediamate.SettingsManager
 
@@ -45,7 +48,8 @@ fun DisplaySettingsScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Combine App Icon & Album Art Toggle
@@ -70,6 +74,7 @@ fun DisplaySettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = {
                         combineAppIconAndAlbumArt = it
                         SettingsManager.setCombineAppIconAndAlbumArt(context, it)
+                        MediaBridgeSessionManager.refreshCurrentSession(forceLyricsResync = true)
                     }
                 )
             }
@@ -98,6 +103,7 @@ fun DisplaySettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = {
                         showAlbumName = it
                         SettingsManager.setShowAlbumName(context, it)
+                        MediaBridgeSessionManager.refreshCurrentSession(forceLyricsResync = true)
                     }
                 )
             }
@@ -126,6 +132,7 @@ fun DisplaySettingsScreen(onBack: () -> Unit) {
                     onCheckedChange = {
                         showSourceApp = it
                         SettingsManager.setShowSourceApp(context, it)
+                        MediaBridgeSessionManager.refreshCurrentSession(forceLyricsResync = true)
                     }
                 )
             }
