@@ -2,6 +2,8 @@ package com.gululu.aamediamate
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import com.gululu.aamediamate.models.MediaInfo
@@ -11,6 +13,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -164,4 +167,35 @@ class LyricDisplayManagerTest {
         verify { mediaSession.setMetadata(capture(slot)) }
         assertNull(slot.captured.getString(MediaMetadataCompat.METADATA_KEY_ALBUM))
     }
+
+    @Test
+    fun `updateLyricLine uses artwork received after lyric sync started`() {
+        val initialInfo = mediaInfo(albumArt = null)
+        val latestArtwork = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.RED)
+        }
+        val latestInfo = initialInfo.copy(albumArt = latestArtwork)
+        val currentInfoField = LyricDisplayManager::class.java.getDeclaredField("currentMediaInfo")
+        currentInfoField.isAccessible = true
+        currentInfoField.set(manager, latestInfo)
+
+        invokeUpdateLyricLine(initialInfo, "Singing lyrics...")
+
+        val slot = slot<MediaMetadataCompat>()
+        verify { mediaSession.setMetadata(capture(slot)) }
+        assertSame(latestArtwork, slot.captured.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART))
+    }
+
+    private fun mediaInfo(albumArt: Bitmap?) = MediaInfo(
+        title = "Song Title",
+        artist = "Artist Name",
+        album = "Album Name",
+        appName = "MusicApp",
+        appPackageName = "com.music.app",
+        duration = 1000L,
+        isPlaying = true,
+        position = 0L,
+        albumArt = albumArt,
+        appIcon = null
+    )
 }

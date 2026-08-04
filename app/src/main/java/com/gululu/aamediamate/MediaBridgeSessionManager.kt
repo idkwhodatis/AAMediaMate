@@ -35,13 +35,14 @@ object MediaBridgeSessionManager {
     }
 
     fun updateFromMediaInfo(info: MediaInfo?, forceLyricsResync: Boolean = false) {
-        currentMediaInfo = info
+        val displayInfo = info?.retainAlbumArtFrom(currentMediaInfo)
+        currentMediaInfo = displayInfo
         val session = mediaSession ?: return
         val ctx = context ?: return
 
-        if (info == null || !Global.packageAllowed(ctx, info.appPackageName)) {
-            if (info != null) {
-                Log.d("MediaBridge", "🚫 Ignoring disallowed package: ${info.appPackageName}")
+        if (displayInfo == null || !Global.packageAllowed(ctx, displayInfo.appPackageName)) {
+            if (displayInfo != null) {
+                Log.d("MediaBridge", "🚫 Ignoring disallowed package: ${displayInfo.appPackageName}")
             }
             mediaStateUpdater?.clear(session)
             lyricDisplayManager?.stop()
@@ -51,13 +52,13 @@ object MediaBridgeSessionManager {
         }
 
         // Track this app as bridged
-        SettingsManager.addOrUpdateBridgedApp(ctx, info.appPackageName, info.appName)
+        SettingsManager.addOrUpdateBridgedApp(ctx, displayInfo.appPackageName, displayInfo.appName)
 
         // Metadata is only republished when its visible content changes; playback state always refreshes.
-        mediaStateUpdater?.update(session, info)
-        lyricDisplayManager?.start(session, info, forceRestart = forceLyricsResync)
+        mediaStateUpdater?.update(session, displayInfo)
+        lyricDisplayManager?.start(session, displayInfo, forceRestart = forceLyricsResync)
 
-        mediaInfoListener?.invoke(info)
+        mediaInfoListener?.invoke(displayInfo)
         MediaBridgeService.refreshBrowserData()
     }
 

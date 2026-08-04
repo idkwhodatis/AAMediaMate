@@ -20,6 +20,7 @@ class LyricDisplayManager(private val context: Context) {
     private var currentLyricsJob: Job? = null
     private val lyricsJobMutex = Mutex()
     private var lyricsUpdateJob: Job? = null
+    @Volatile
     private var currentMediaInfo: MediaInfo? = null
 
     private val wakeLock: PowerManager.WakeLock by lazy {
@@ -43,7 +44,7 @@ class LyricDisplayManager(private val context: Context) {
         }
 
         if (!forceRestart && info.isSameTrack(currentMediaInfo)) {
-            currentMediaInfo = info
+            currentMediaInfo = info.retainAlbumArtFrom(currentMediaInfo)
             Log.d("MediaBridge", "🎵 Keeping active lyrics for unchanged track: ${info.title}")
             return
         }
@@ -113,12 +114,15 @@ class LyricDisplayManager(private val context: Context) {
     }
 
     private fun updateLyricLine(mediaSession: MediaSessionCompat, originalInfo: MediaInfo, lyricLine: String) {
+        val displayInfo = currentMediaInfo
+            ?.takeIf { it.isSameTrack(originalInfo) }
+            ?: originalInfo
         val metadataBuilder = MediaMetadataCompat.Builder()
-            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, originalInfo.mediaId)
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, originalInfo.duration)
+            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, displayInfo.mediaId)
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, displayInfo.duration)
 
         if (SettingsManager.getShowSourceApp(context)) {
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "From ${originalInfo.appName}")
+            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "From ${displayInfo.appName}")
         }
 
         val showAlbumName = SettingsManager.getShowAlbumName(context)
@@ -129,10 +133,10 @@ class LyricDisplayManager(private val context: Context) {
 
             // Consolidate song title, artist, and album into the ARTIST field
             val songInfoParts = mutableListOf<String>()
-            originalInfo.title.takeIf { it.isNotBlank() }?.let { songInfoParts.add(it) }
-            originalInfo.artist.takeIf { it.isNotBlank() }?.let { songInfoParts.add(it) }
+            displayInfo.title.takeIf { it.isNotBlank() }?.let { songInfoParts.add(it) }
+            displayInfo.artist.takeIf { it.isNotBlank() }?.let { songInfoParts.add(it) }
             if (showAlbumName) {
-                originalInfo.album.takeIf { it.isNotBlank() }?.let { songInfoParts.add(it) }
+                displayInfo.album.takeIf { it.isNotBlank() }?.let { songInfoParts.add(it) }
             }
             
             val songInfo = songInfoParts.joinToString(" - ")
@@ -140,10 +144,10 @@ class LyricDisplayManager(private val context: Context) {
 
         } else {
             // When no lyric is displayed, restore the original media info formatted correctly
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, originalInfo.title)
+            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, displayInfo.title)
 
-            val artist = originalInfo.artist.takeIf { it.isNotBlank() }
-            val album = originalInfo.album.takeIf { it.isNotBlank() }
+            val artist = displayInfo.artist.takeIf { it.isNotBlank() }
+            val album = displayInfo.album.takeIf { it.isNotBlank() }
             
             val artistText = if (showAlbumName) {
                 listOfNotNull(artist, album).joinToString(" - ")
@@ -156,7 +160,7 @@ class LyricDisplayManager(private val context: Context) {
             }
         }
 
-        originalInfo.albumArt?.let {
+        displayInfo.albumArt?.let {
             metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
         }
 

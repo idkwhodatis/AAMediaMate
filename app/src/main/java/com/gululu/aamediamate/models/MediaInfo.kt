@@ -20,4 +20,13 @@ data class MediaInfo(
 
     internal fun isSameTrack(other: MediaInfo?): Boolean =
         other != null && mediaId == other.mediaId
+
+    internal fun retainAlbumArtFrom(previous: MediaInfo?): MediaInfo {
+        if (albumArt != null || !isSameTrack(previous)) return this
+
+        val previousAlbumArt = previous?.albumArt
+            ?.takeUnless { it.isRecycled }
+            ?: return this
+        return copy(albumArt = previousAlbumArt)
+    }
 }
